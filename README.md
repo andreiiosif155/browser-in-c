@@ -1,2 +1,136 @@
-# browser-in-c
-This project implements a complete browser simulation in C, featuring tab management, navigation history, and page loading functionality. The browser maintains multiple tabs organized in a circular doubly-linked list with a sentinel node, with each tab containing its own navigation stacks (BACKWARD and FORWARD) for history tracking.
+Abstract:
+This project implements a complete browser simulation in C, featuring
+tab management, navigation history, and page loading functionality.
+The browser maintains multiple tabs organized in a circular doubly-linked
+list with a sentinel node, with each tab containing its own navigation stacks
+(BACKWARD and FORWARD) for history tracking.
+
+Implementation:
+Respectand structura si ordinea functiilor din cod:
+
+Structuri de date utilizate:
+Am optat pentru pointeri in structuri pentru a evita copierea
+ineficienta a datelor intre functii (lucrand direct cu referinte),
+pentru a reduce consumul de memorie si pentru a usura modificarea
+starii browserului.
+
+Astfel, structurile de date folosite sunt:
+- page - retine informatiile despre o pagina web
+- nodeStack - Nod pentru stiva de navigare (FORWARD/BACKWARD),
+ contine pointer la pagina web
+- stack - stiva
+- tab - un tab din browser, contine pointeri la pagina curenta 
+ si la stivele FORWARD/BACKWARD
+- nodeList - nod pentru lista dublu inlantuita de tab-uri
+- tabsList - lista dublu inlantuita circulara cu santinela pentru tab-uri
+- browser - structura principal a browserului, contine pointeri la tab-ul curent 
+ si la lista tab-urilor
+
+Functii de initializare:
+Am creat 3 functii ajutatoare pentru initializarea structurilor necesare,
+structurile majore (browser, tab si nodeList) fiind alocate pe heap
+pentru o gestionare flexibila.
+- pagina_implicita() - functie ce creeaza pagina implicita a browserului
+- init_tab(page pages[]) - functie ce initializeaza un nou tab cu pagina implicita
+ si stivele FORWARD si BACKWARD goale.
+- init_browser(page pages[]) - functie ce initializeaza browserul cu un tab implicit
+ si o lista dublu inlantuita circulara cu santinela pentru taburi.
+
+Functii de eliberare a memoriei:
+Am creat 3 functii ajutatoare pentru eliberarea corecta a memoriei alocate 
+dinamic pentru structurile principale ale browserului, prevenind astfel scurgerile de memorie.
+- free_stack(stack *s) – functie ce elibereaza memoria ocupata de o stiva (FORWARD sau BACKWARD),
+ parcurgand nodurile si dealocandu-le individual, apoi eliberand structura stivei propriu-zise.
+- free_tabs_list(tabsList *list) – functie ce elibereaza memoria listei circulare de taburi,
+ incluzand atat fiecare nod din lista, cat si taburile aferente si stivele acestora.
+- free_browser(browser *browser) – functie ce elibereaza intreaga structura a browserului,
+ apeland free_tabs_list() pentru a elibera toate taburile si ulterior eliberand structura browserului.
+
+Functii cu operatii pe stive:
+Am creat 4 functii ajutatoare pentru operatii de baza pe stiva.
+- addStack(stack s, page page) – functie ce adauga o pagina in varful stivei.
+ Aloca dinamic un nod nou, seteaza pagina si actualizeaza pointerul top
+ astfel incat elementul nou sa devina varful stivei.
+- popStack(stack s) – functie ce elimina pagina din varful stivei.
+ Daca stiva este goala, nu face nimic. In caz contrar,
+ elibereaza memoria nodului din varf si actualizeaza pointerul top.
+- isEmptyStack(stack s) – functie ce verifica daca stiva este goala.
+ Returneaza 1 daca pointerul top este NULL, altfel returneaza 0.
+ Este utila pentru a evita operatii invalide asupra unei stive goale.
+- invers(stack s) – functie ce creeaza si returneaza o copie inversata
+ a unei stive date. Parcurge elementele originale si le insereaza
+ intr-o stiva temporara astfel incat ordinea lor sa fie inversata.
+ Este utila pentru afisarea istoricului de navigare in ordinea
+ cronologica corecta a stivei FORWARD.
+
+Functii principale:
+- OPEN(browser browser, int ID_cautat, FILE fout) – functie ce cauta tab-ul cu ID-ul 
+ specificat in lista dublu inlantuita circulara de taburi, pornind de la primul nod.
+ Daca gaseste tab-ul, il seteaza ca tab curent, actualizand pointerul browser-- current.
+ Daca nu gaseste tab-ul (cautarea ajunge inapoi la santinela), afiseaza mesajul de eroare.
+- NEXT(browser browser) – functie ce determina nodul care contine tab-ul curent,
+ apoi il inlocuieste cu tab-ul din nodul urmator din lista. Daca tab-ul curent
+ este ultimul (adica nodul inainte de santinela), functia seteaza primul tab din
+ lista ca tab curent. Astfel, se asigura parcurgerea circulara inainte intre tab-uri.
+- PREV(browser browser) – functie similara cu NEXT, dar care navigheaza inapoi in lista.
+ Cauta nodul corespunzator tab-ului curent si il inlocuieste cu tab-ul din nodul precedent.
+ Daca tab-ul curent este primul (adica nodul dupa santinela), functia seteaza ultimul
+ tab din lista ca tab curent, asigurand astfel o parcurgre circulara inapoi.
+- PAGE(browser browser, int ID_cautat, page pages[], int nrPagini, FILE fout) – functie
+ ce cauta pagina cu ID-ul dorit in vectorul de pagini. Daca aceasta este gasita,
+ o seteaza ca noua pagina curenta pentru tab-ul activ. Pagina curenta este adaugata in stiva BACKWARD,
+ iar stiva FORWARD este golita. Daca pagina nu este gasita, afiseaza mesajul de eroare.
+- BACKWARD(browser browser, FILE fout) – functie ce permite revenirea la pagina anterioara
+ in cadrul tab-ului curent. Verifica daca exista pagini in stiva BACKWARD;
+ daca da, adauga pagina curenta in stiva FORWARD si seteaza pagina din varful
+ stivei BACKWARD ca pagina curenta, apoi o elimina din stiva.
+ Daca stiva BACKWARD este goala, afiseaza mesajul de eroare.
+- FORWARD(browser browser, FILE fout) – functie ce permite inaintarea catre pagina urmatoare.
+ Verifica daca stiva FORWARD contine pagini; daca da, salveaza pagina curenta in stiva BACKWARD
+ si seteaza pagina din varful stivei FORWARD ca pagina curenta, apoi o elimina din stiva.
+ Daca stiva FORWARD este goala, afiseaza mesajul de eroare.
+- PRINT(browser browser, FILE fout) – functie ce afiseaza lista circulara
+ a ID-urilor tab-urilor, incepand de la cel curent, sarind peste santinela.
+ Dupa ce parcurge lista pana revine la tab-ul initial, afiseaza si descrierea
+ paginii curente din tab-ul curent.
+- PRINT_HISTORY(browser browser, int ID_cautat, FILE fout) – functie ce afiseaza
+ istoricul complet de navigare al unui tab identificat dupa ID. Afiseaza mai intai
+ stiva FORWARD (folosind o copie inversata pentru ordinea corecta),
+ apoi URL-ul paginii curente, si in final stiva BACKWARD. Daca tab-ul
+ cu ID-ul dat nu este gasit, afiseaza mesajul de eroare.
+
+Functii pentru citirea si prelucrarea datelor:
+Am creat 3 functii auxiliare pentru a usura citirea si prelucrarea corecta a datelor de intrare din fisiere.
+- int conversie(char s) – functie care transforma un numar stocat sub forma
+ de sir de caractere (char) intr-un intreg (int). Parcurge fiecare caracter
+ al sirului, verificand sa nu fie \0 sau \n, si construieste treptat valoarea
+ numerica prin inmultiri si adunari succesive.
+- void prelucrareString(char s) – functie ce elimina caracterul newline (\n)
+ de la finalul unui sir citit cu fgets, inlocuindu-l cu \0.
+ Aceasta este necesara pentru a evita probleme in comparatii sau afisari ulterioare.
+- void citire_Pagini(page pages[], int nrPagini, FILE fin) – functie ce citeste
+ datele despre paginile web din fisierul de intrare. Citeste ID-ul
+ (pe care il converteste din sir in int), apoi citeste URL-ul si descrierea fiecarei pagini.
+ Descrierea este alocata dinamic pentru a permite gestionarea flexibila a dimensiunii textului.
+ Primul element din vector (pages[0]) este rezervat pentru pagina implicita,
+ iar citirea incepe de la pages[1].
+
+Functia main():
+In main() se realizeaza initializarea programului, citirea instructiunilor din fisier
+si apelarea corespunzatoare a functiilor.
+- Deschiderea fisierelor: Se deschid fisierele tema1.in pentru citire
+ si tema1.out pentru scriere.
+- Citirea numarului de pagini: Se citeste numarul de pagini disponibile
+ si se adauga +1 pentru a include si pagina implicita (care este salvata in pages[0]).
+- Initializarea paginilor: Se aloca dinamic vectorul pages[],
+ iar pagina implicita este initializata si salvata pe prima pozitie.
+ Restul paginilor sunt citite din fisier folosind citire_Pagini().
+- Initializarea browserului: Se initializeaza browserul cu un tab implicit
+ si pagina implicita folosind init_browser().
+- Executarea instructiunilor: Se citesc si se prelucreaza pe rand instructiunile din fisier.
+ Pentru fiecare instructiune, se determina comanda si se apeleaza functia corespunzatoare.
+- In cazul comenzilor care contin un ID (ex: OPEN 3, PAGE 5, PRINT_HISTORY 2),
+ se extrage numarul din instructiune si se trimite ca argument.
+- Eliberarea memoriei: La final, se elibereaza memoria alocata dinamic pentru
+ descrierile fiecarei pagini, vectorul pages[], intreaga structura a browserului.
+- Inchiderea fisierelor
